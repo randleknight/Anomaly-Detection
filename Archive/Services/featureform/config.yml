@@ -1,0 +1,80 @@
+version: 1
+project_name: "my_featureform_project"
+
+metadata:
+  type: "local"
+  host: "localhost"
+  port: 8080
+
+serving:
+  type: "local"
+  host: "localhost"
+  port: 8082
+
+registry:
+  type: "local"
+  path: "/path/to/registry"
+
+providers:
+  - name: "local_files"
+    type: "local"
+    path: "/path/to/data"
+
+  - name: "postgres"
+    type: "postgres"
+    host: "lwa-db"
+    port: 5432
+    user: "postgres"
+    password: "lwanalytics"
+    database: "AAR_FEATUREFORM"
+
+  - name: "redis"
+    type: "redis"
+    host: "localhost"
+    port: 6379
+
+feature_store:
+  type: "local"
+  path: "/path/to/feature_store"
+
+entities:
+  - name: "user"
+    join_keys: ["user_id"]
+  - name: "product"
+    join_keys: ["product_id"]
+
+feature_views:
+  - name: "user_features"
+    entities: ["user"]
+    features:
+      - name: "age"
+        type: "int64"
+      - name: "total_purchases"
+        type: "float"
+    provider: "postgres"
+    query: "SELECT user_id, age, total_purchases FROM user_table"
+
+  - name: "product_features"
+    entities: ["product"]
+    features:
+      - name: "price"
+        type: "float"
+      - name: "category"
+        type: "string"
+    provider: "local_files"
+    path: "/path/to/product_data.csv"
+
+online_stores:
+  - name: "default"
+    type: "redis"
+    host: "localhost"
+    port: 6379
+
+offline_stores:
+  - name: "default"
+    type: "postgres"
+    host: "host"
+    port: 5432
+    user: "postgres"
+    password: "password"
+    database: "database"

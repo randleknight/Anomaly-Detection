@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Service Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for a cleaner font and full-height layout */
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f7f9fb;
+        }
+    </style>
+</head>
+<body>
+    <div class="w-full max-w-4xl p-8 m-4 bg-white rounded-xl shadow-2xl border border-gray-100">
+        <img src="{{url_for('static',filename='images/logo.png')}}" alt="logo" class="mb-4 mx-auto">
+        <h1 class="text-4xl font-extrabold text-gray-700 mb-6 text-center">ML Service Manager</h1>
+        <form id="flask-form" action="#" method="POST">
+            
+            <div class="mb-8 border-b pb-4">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">1. Settings and Parameters</h2>
+                
+                <h3 class="font-semibold text-gray-700 mb-4">1.1 Memory Settings</h3>
+                <div class="grid grid-cols-2 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="min_memory" class="block text-sm font-medium text-gray-700 mb-1">Minimum Memory (gb)</label>
+                        <input type="number" id="min_memory" name="min_memory" placeholder="8" value="8" min="0" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm" disabled>
+                    </div>
+                    <div>
+                        <label for="max_memory" class="block text-sm font-medium text-gray-700 mb-1">Maximum Memory (gb)</label>
+                        <input type="number" id="max_memory" name="max_memory" placeholder="16" value= "16" min="0" max="100" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm" disabled>
+                    </div>
+                </div>
+            </div>    
+
+            <div class="mb-8 border-b pb-4">
+                <h3 class="font-semibold text-gray-700 mb-4">1.2 Training/Inference Settings</h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="training_span" class="block text-sm font-medium text-gray-700 mb-1">Training Timespan (Days)</label>
+                        <input type="number" id="training_span" name="training_span" placeholder="90" value="" min="0" max="" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm">
+                    </div>
+                    <div>
+                        <label for="inference_span" class="block text-sm font-medium text-gray-700 mb-1">Inference Timespan (Days)</label>
+                        <input type="number" id="inference_span" name="inference_span" placeholder="7" value="" min="0" max="" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm">
+                    </div>
+                    <div class="flex items-center mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <input type="checkbox" id="grid_search" name="grid_search" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" readonly>
+                        <label for="grid_search" class="ml-3 block text-sm font-medium text-gray-700">Grid Search</label>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="mb-8 border-b pb-4">
+                <h3 class="font-semibold text-gray-700 mb-4">1.3 Database Settings</h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="cred_name" class="block text-sm font-medium text-gray-700 mb-1">Credential Name (Dropdown):</label>
+                        <input list="cred_options" id="cred_name" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm">
+                        <datalist id="cred_options">
+                            {% for credentials in saved_creds %}
+                            <option value="{{ credentials }}">{{ credentials }}</option>
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                    <div>
+                        <label for="db_driver" class="block text-sm font-medium text-gray-700 mb-1">Database (Dropdown):</label>
+                        <select id="db_driver" name="db_driver" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm">
+                            <option value="{PostgreSQL Unicode}" selected>postgres</option>
+                            <option value="{ODBC Driver 17 for Sql Server}">mssql</option>
+                            <option value="{Oracle Driver}" disabled>Oracle</option>
+                        </select>
+                    </div>    
+                    <div>
+                        <label for="db_database" class="block text-sm font-medium text-gray-700 mb-1">Database Name:</label>
+                        <input type="text" id="db_database" name="db_database" placeholder="Enter Database Name" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm">
+                    </div>
+                    <div>
+                        <label for="db_username" class="block text-sm font-medium text-gray-700 mb-1">Database Username:</label>
+                        <input type="text" id="db_username" name="db_username" placeholder="Enter Username" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm">
+                    </div>
+                    <div>
+                        <label for="db_password" class="block text-sm font-medium text-gray-700 mb-1">Database Password:</label>
+                        <input type="password" id="db_password" name="db_password" placeholder="Enter Password" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm">
+                    </div> 
+                    <div>
+                        <label for="db_hostname" class="block text-sm font-medium text-gray-700 mb-1">Database Hostname:</label>
+                        <input type="text" id="db_hostname" name="db_hostname" placeholder="Enter Hostname" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm">
+                    </div>
+                    <div>
+                        <label for="db_port" class="block text-sm font-medium text-gray-700 mb-1">Database Port:</label>
+                        <input type="number" id="db_port" name="db_port" placeholder="Enter port" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm">
+                    </div>
+                    <div>
+                        <label for="audit_select" class="block text-sm font-medium text-gray-700 mb-1">Logs (Dropdown)</label>
+                        <select id="audit_select" name="audit_select" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm">
+                            <option value="1" disabled>All</option>
+							<option value="2" selected>Sample</option>
+                            <option value="3">Experiment</option>
+                            <option value="4">Invest</option>
+                            <option value="5">Lot</option>
+                            <option value="6">Project</option>
+                            <option value="7">Protocol</option>
+                            <option value="8">Stor_loc</option>
+                            <option value="9">Batch</option>
+                            <option value="10">Charge</option>
+                            <option value="11">Order</option>
+                            <option value="12">Reports</option>
+                            <option value="13">Table</option>
+                            <option value="14">Formulation</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="table_location" class="block text-sm font-medium text-gray-700 mb-1">Output DB Table</label>
+                        <input type="text" id="table_location" name="table_location" placeholder="t0083_ar" value="t0083_ar" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm" readonly>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-8 border-b pb-4">
+                <h3 class="font-semibold text-gray-700 mb-4">1.4 MLflow Settings</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex items-center mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <input type="checkbox" id="use_mlflow" name="use_mlflow" class="h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                        <label for="use_mlflow" class="ml-3 block text-sm font-bold text-gray-700">Activate MLflow Tracking</label>
+                    </div>
+                    <div>
+                        <label for="mlflow_experiment" class="block text-sm font-medium text-gray-700 mb-1">Experiment Name</label>
+                        <input type="text" id="mlflow_experiment" name="mlflow_experiment" placeholder="Anomaly_Detection_V1" value="Anomaly_Detection_V1" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500">
+                    </div>
+                    <div>
+                        <label for="mlflow_host" class="block text-sm font-medium text-gray-700 mb-1">Host (e.g.http://mlflow-server)</label>
+                        <input type="text" id="mlflow_host" name="mlflow_host" placeholder="http://localhost" value="http://localhost" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500">
+                    </div>
+                    <div>
+                        <label for="mlflow_port" class="block text-sm font-medium text-gray-700 mb-1">Port</label>
+                        <input type="text" id="mlflow_port" name="mlflow_port" placeholder="5000" value="5000" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
+                <button type="button" id="train_button" onclick="handleTrainProcess()" class="flex-1 px-6 py-3 text-white font-semibold bg-orange-400 rounded-lg shadow-md hover:bg-orange-600 focus:ring-4 focus:ring-orange-300 transition duration-150">
+                    Train / Retrain
+                </button>
+                <button type="button" id="infer_button" onclick="handleInferProcess()" class="flex-1 px-6 py-3 text-white font-semibold bg-blue-400 rounded-lg shadow-md hover:bg-blue-600 focus:ring-4 focus:ring-blue-300 transition duration-150">
+                    Inference (predictions)
+                </button>
+                <button type="button" id="troubleshoot_button" onclick="handleTroubleshootProcess()" class="flex-1 px-6 py-3 text-white font-semibold bg-red-400 rounded-lg shadow-md hover:bg-red-600 focus:ring-4 focus:ring-red-300 transition duration-150">
+                    Troubleshoot
+                </button>
+                <button type="button" id="save_cred_button" onclick="saveCredentials()" class="flex-1 px-6 py-3 text-white font-semibold bg-green-400 rounded-lg shadow-md hover:bg-green-600 focus:ring-4 focus:ring-green-300 transition duration-150">
+                    Save DB credentials
+                </button>
+                <button type="button" onclick="deleteCredential()" class="flex-1 px-6 py-3 text-white font-semibold bg-green-400 rounded-lg shadow-md hover:bg-green-600 focus:ring-4 focus:ring-green-300 transition duration-150">
+                    Delete DB Credential
+                </button>
+                <button type="button" id="clear_button" onclick="document.getElementById('flask-form').reset()" class="flex-1 px-6 py-3 text-white font-semibold bg-gray-400 rounded-lg shadow-md hover:bg-gray-600 focus:ring-4 focus:ring-gray-300 transition duration-150">
+                    Clear Form
+                </button>
+            </div>
+
+            <div id="message_box" class="mt-6 p-3 text-sm text-left bg-gray-100 border border-gray-200 rounded-lg hidden"></div>
+
+        </form>
+    </div>
+
+    <script>
+        const messageBox = document.getElementById('message_box');
+        const form = document.getElementById('flask-form');
+
+        function collectFormData() {
+            const formData = new FormData(form);
+            const data = {};
+            const gridSearchChecked = document.getElementById('grid_search').checked;
+            const mlflowChecked = document.getElementById('use_mlflow').checked;
+            
+            for (const [key, value] of formData.entries()) {
+                data[key] = value;
+            }
+
+            data['grid_search'] = gridSearchChecked ? 'True' : 'False';
+            data['use_mlflow'] = mlflowChecked ? 'True' : 'False';
+            data['mlflow_experiment'] = document.getElementById('mlflow_experiment').value;
+            data['mlflow_host'] = document.getElementById('mlflow_host').value;
+            data['mlflow_port'] = document.getElementById('mlflow_port').value;
+            const dbDriverElement = document.getElementById('db_driver');
+            const auditSelectElement = document.getElementById('audit_select');
+            
+            if (dbDriverElement) data['db_driver'] = dbDriverElement.value;
+            if (auditSelectElement) data['audit_select'] = auditSelectElement.value;
+            
+            return data;
+        }
+
+        function showMessage(message, type = 'info') {
+            let bgColor = 'bg-gray-100';
+            let textColor = 'text-gray-700';
+
+            if (type === 'success') {
+                bgColor = 'bg-green-100';
+                textColor = 'text-green-700';
+            } else if (type === 'error') {
+                bgColor = 'bg-red-100';
+                textColor = 'text-red-700';
+            } else if (type === 'warning') {
+                bgColor = 'bg-yellow-100';
+                textColor = 'text-yellow-700';
+            }
+
+            messageBox.innerHTML = message;
+            messageBox.className = `mt-6 p-3 text-sm text-left border rounded-lg ${bgColor} ${textColor}`;
+            messageBox.classList.remove('hidden');
+
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 30000);
+        }
+
+        async function saveCredentials() {
+            const credData = {
+                cred_name: document.getElementById('cred_name').value,
+                db_driver: document.getElementById('db_driver').value,
+                db_database: document.getElementById('db_database').value,
+                db_username: document.getElementById('db_username').value,
+                db_password: document.getElementById('db_password').value,
+                db_hostname: document.getElementById('db_hostname').value,
+                db_port: document.getElementById('db_port').value
+            };
+        
+            await sendProcessRequest('/update_db_creds', credData, 'Credential Update');
+        }
+
+        async function sendProcessRequest(endpoint, data, processName) {
+            if (!form.reportValidity()) {
+                showMessage("<p class='font-semibold'>Please fill out all required fields before proceeding.</p>", 'warning');
+                return;
+            }
+
+            showMessage(`<p class='font-semibold'>Initiating ${processName} process...</p>`, 'info');
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    let logOutput = result.log_output ? `<pre class="mt-2 p-2 bg-white rounded whitespace-pre-wrap">${result.log_output}</pre>` : '';
+                    showMessage(`<p class='font-semibold'>${processName} successful!</p>${logOutput}`, 'success');
+                } else {
+                    let errorMessage = result.error || `Unknown error during ${processName}.`;
+                    let details = result.details || '';
+                    showMessage(`<p class='font-semibold'>Error during ${processName}:</p><p>${errorMessage}</p><p>${details}</p>`, 'error');
+                }
+            } catch (error) {
+                console.error('Fetch error:', error);
+                showMessage(`<p class='font-semibold'>Network error:</p><p>Could not connect to the Flask server or an unexpected error occurred.</p>`, 'error');
+            }
+        }
+
+        async function deleteCredential() {
+        const credName = document.getElementById('cred_name').value;
+            if (!credName) return alert("Please enter or select a credential name to delete.");
+            
+            if (!confirm(`Are you sure you want to delete '${credName}'?`)) return;
+
+            const response = await fetch('/delete_db_cred', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ cred_name: credName })
+            });
+            
+            if (response.ok) {
+                alert("Credential deleted successfully.");
+                location.reload(); 
+            } else {
+                const err = await response.json();
+                alert("Error: " + err.message);
+            }
+        }
+
+        function handleTrainProcess() { sendProcessRequest('/train', collectFormData(), 'Training/Retraining'); }
+        function handleInferProcess() { sendProcessRequest('/infer', collectFormData(), 'Inference'); }
+        function handleTroubleshootProcess() { sendProcessRequest('/troubleshoot', collectFormData(), 'Troubleshooting'); }
+        
+        window.onload = () => { console.log("Extended Interface loaded and ready for Flask integration."); };
+    </script>
+</body>
+</html>

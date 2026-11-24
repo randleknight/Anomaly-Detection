@@ -1,0 +1,94 @@
+from pathlib import Path
+import pandas as pd
+import numpy as np
+from feature_engine.encoding import CountFrequencyEncoder
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestClassifier
+from sklearn import metrics
+import shap
+import mlflow.sklearn
+import mlflow
+
+import config
+
+# define Mlflow env. settings
+mlflow.set_tracking_uri(uri=config.mlflow_uri)
+%env MLFLOW_TRACKING_URI= config.mlflow_db
+%env mlflow_tracking_username = config.mlflow_un
+%env mlflow_tracking_password = config.mlflow_pw
+#mlflow.enable_system_metrics_logging()
+
+mlflow.set_experiment("T0083 - Audit Review")
+
+for customer in config.customerList: 
+    for auditLog in config.auditList:  
+        for FilterType in config.FilterTypeList:
+            with mlflow.start_run(run_name=f"Sklearn-RF Model-{auditLog}-Audit Type context-{customer}", nested=True) as grandparent_run:
+                filepath = Path(f'{config.data_location}FS_audit_type_table_name/{auditLog}/{FilterType}/FS_audit_type_table_name_{auditLog}_{FilterType}_{customer}.parquet')
+                if filepath.is_file()==True:
+                    df = pd.read_parquet(filepath, engine='pyarrow')
+                    #df = df.drop(['T0083','T0083_SEVERITY','T_MLAR','T_MLAR_SEVERITY','MLAR_TYPE'],axis=1) #RK should be already done in FS scripts
+                    #df = df.astype(str).replace('nan',np.nan).dropna(how='all',axis=1) #RK should be already done in FS scripts
+                    df = df.astype(str)
+                    features = df.columns.tolist()
+                    #Update to Anomaly field onced changed
+                    categoricalColumns = df.drop(['T0083_SEVERITY'],axis=1).select_dtypes(include=['object']).columns.tolist()
+                    encoder = CountFrequencyEncoder(encoding_method='frequency', variables=categoricalColumns, ignore_format=True)
+                    dataFrame = encoder.fit_transform(df) 
+                    #Update to Anomaly field onced changed
+                    X_train, X_test, y_train, y_test = train_test_split(
+                        dataFrame[dataFrame.columns.drop(list(dataFrame.filter(like='T0083_SEVERITY')))], 
+                        dataFrame.filter(like='T0083_SEVERITY').sum(axis=1), 
+                        test_size=0.30, 
+                        random_state=1234)
+                        
+                    # Define model parameters
+                    # classWeight = "balanced"
+                    maxDepth = 5
+
+                    # Initialize the model
+                    rf_model = RandomForestClassifier(max_depth=maxDepth)
+                
+                    # Start an MLflow run
+                    with mlflow.start_run(run_name=f"Model Evaluation", nested=True) as parent_run:
+                        # Log model parameters and train
+                        #mlflow.log_param("class_weight",classWeight)
+                        #mlflow.log_param("max_depth",maxDepth)
+                        rf_model.fit(X_train.values,y_train.values) 
+                    
+                        # Predict anomalies and generate histogram
+                        predictedTest = pd.DataFrame(rf_model.predict(X_test.values)) 
+                    
+                        # Combine the scores with the original data
+                        finalTestDataframe = pd.concat([pd.DataFrame(data=predictedTest,columns=['anomaly']),y_train],axis=1)
+                        predictedDF = finalTestDataframe[finalTestDataframe['anomaly'] > 0]
+
+                        #Export Dataset
+                        mlflow.log_table(predictedDF,"predictedDF.json")
+
+                        with mlflow.start_run(run_name=f"Model Explaination", nested=True) as child_run:
+                            #Log metrics
+                            precisionScore = metrics.precision_score(y_test, predictedTest, average='micro',zero_division=1)
+                            recallScore = metrics.recall_score(y_test, predictedTest, average='micro',zero_division=1)
+                            f1Score = metrics.f1_score(y_test, predictedTest, average='micro',zero_division=1)               
+                            classificationReport = metrics.classification_report(y_test, predictedTest,zero_division=1)
+                            mlflow.log_metric("precision", precisionScore)
+                            mlflow.log_metric("recall", recallScore)
+                            mlflow.log_metric("f1_score", f1Score)
+                            mlflow.log_text(classificationReport, "classificationReport.txt")
+                            
+                            #Train explaination model
+                            #custom_masker = shap.maskers.Partition(dataFrame, max_samples=30, clustering='correlation')
+                            #explainer = shap.Explainer(rf_model.predict,masker=custom_masker) #, dataFrame) max_eval=500,nsamples=100
+                            explainer = shap.TreeExplainer(rf_model) #Not Supported for IF
+                            shap_values = explainer.shap_values(dataFrame)
+                            shapBarplot = plt.figure(figsize=(9, 3))
+                            shap.summary_plot(shap_values, features=explainer.feature_names , plot_type="bar", max_display=15)
+                            mlflow.log_figure(shapBarplot, f"{customer}_GlobalBarPlot.png")  
+                            logModel = mlflow.sklearn.log_model(sk_model=rf_model,artifact_path=f"Sklearn-RF_{auditLog}_{FilterType}_{customer}_audit_type_model",registered_model_name=f"Sklearn-RF_{auditLog}_{FilterType}_{customer}_audit_type_model")
+
+                else:
+                    print("Error - Feature store file not found. Check directory.")
+
+                    

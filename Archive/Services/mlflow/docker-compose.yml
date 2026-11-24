@@ -1,0 +1,11 @@
+version: '3'
+services:
+  mlflow:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=postgresql://postgres:admin@localhost:5432/mlflow
+      - MLFLOW_ARTIFACT_STORE=/mlflow/artifacts
+    volumes:
+      - ./mlflow-artifacts:/mlflow/artifacts
